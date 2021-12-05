@@ -1,0 +1,622 @@
+---
+title: "Sentiment Analysis for GM Tweets & Relationship with Daily Stock Price Change"
+author: "Li Peishan"
+date: "3/30/2021"
+output:
+  html_document:
+    toc: yes
+    df_print: paged
+    theme: journal   
+  html_notebook:
+    toc: yes
+    theme: journal
+---
+<style>
+body{ /* Normal */
+font-size: 15px;
+color: black;
+}
+write {  
+line-height: 7em;
+}
+table { /* Table */
+font-size: 12px;
+}
+h1 { /* Header 1 */
+font-size: 30px;
+}
+h2 { /* Header 2 *
+font-size: 26px;
+}
+h3 { /* Header 3 */
+font-size: 22px;
+}
+code.r{ /* Code block */
+font-size: 14px;
+}
+pre { /* Code block */
+font-size: 14px
+}
+.main-container {
+    width: 80%;
+    max-width: unset;
+}
+</style>
+
+```{r setup, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE,eval=TRUE, message=FALSE, warning=FALSE)
+```
+
+Load packages:
+```{r, echo=TRUE, eval=TRUE}
+library(readxl)
+library(magrittr)
+library(dplyr)
+library(ggplot2)    
+library(ggmap)
+library(ggthemes)
+library(ggpubr)
+library(ggforce)
+library(tidyverse)
+library(gmodels)
+library(rgdal)
+library(osmdata)
+library(nominatim)
+library(jsonlite)
+library(RColorBrewer)
+library(tidyr)
+library(leaflet)
+library(maps)
+library(tigris)
+library(tidytext)
+library(textdata)
+library(tm)
+library(quanteda)
+library(rvest)
+library(stringr)
+library(SnowballC)
+library(wordcloud)
+library(plotrix)
+library(qdapDictionaries)
+library(formattable)
+library(stringr)
+library(DT)
+```
+
+Import database:
+```{r import data, echo=TRUE, eval=TRUE}
+GM<-read.csv("/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/GM_stock_sentiment_analysis.csv")
+```
+
+# Cleaning the text and word cloud
+
+## Text cleaning--Further remove numbers and punctuations
+
+Create and preprocess text in corpus (162 tweets)
+```{r create a dtm, echo=TRUE, eval=TRUE}
+doc_id<-c(1:162)
+line<-c(rep(1,162))
+text<-data.frame(doc_id, text=GM$tweet,line, stringsAsFactors=FALSE)
+df_source<-DataframeSource(text)
+df_corpus<-VCorpus(df_source)
+#Clean text
+#removefullycap<-function(x){gsub("[A-Z][A-Z]+", " ", x)}
+#removeemoji<-function(x){gsub("[^\x01-\x7F]", "", x)}
+clean_corpus<-function(corpus){
+  #corpus<-tm_map(corpus, content_transformer(removefullycap))
+  #corpus<-tm_map(corpus, content_transformer(removeemoji))
+  #corpus<-tm_map(corpus, content_transformer(tolower))
+  #corpus<-tm_map(corpus, removeWords, c(stopwords("en")))
+  corpus<-tm_map(corpus, removeNumbers)
+  corpus<-tm_map(corpus, removePunctuation)
+  corpus<-tm_map(corpus, stripWhitespace)
+  return(corpus)
+}
+corpus_clean<-clean_corpus(df_corpus)
+corpus_dtm<-DocumentTermMatrix(corpus_clean)
+corpus_m<-as.matrix(corpus_dtm)
+corpus_dtm
+dim(corpus_m)
+```
+
+## Word cloud
+
+Calculate tf_itf scores for tweets.
+```{r frequncies, echo=TRUE, eval=TRUE}
+#Tidy objects
+corpustd<-tidy(corpus_dtm)
+#Calculate frequencies
+corpustf_idf<-corpustd %>%
+  bind_tf_idf(term, document, count) %>%
+  arrange(desc(tf_idf))
+corpustf_idf
+```
+
+Word cloud for GM CEO's tweets
+```{r word clouds, echo=TRUE, eval=TRUE}
+purple_orange<-brewer.pal(10, "PuOr")
+purple_orange<-purple_orange[-(1:2)]
+set.seed(2100)
+wordcloud(corpustf_idf$term, corpustf_idf$tf, max.words=100, colors=purple_orange)
+```
+
+# Sentiment
+
+## (a) Stay positive
+
+Calculate the tone of each text based on the positive and negative words that are being used in the tweets.
+
+First build the sentiment function. Obtain the list of `positive.words` and `negative.words` from the sentiment dictionary of Hu & Liu (2004) using the `qdapDictionaries` package.
+```{r sentiment function, echo=TRUE, eval=TRUE}
+sentiment<-function(words=c("really great good stuff bad")){
+  tok<-tokens(words)
+  pos.count<-sum(tok[[1]] %in% positive.words)
+  #cat("\n positive words:",tok[[1]][which(tok[[1]]%in%positive.words)],"\n")
+  neg.count<-sum(tok[[1]]%in%negative.words)
+  #cat("\n negative words:",tok[[1]][which(tok[[1]]%in%negative.words)],"\n")
+  out<-(pos.count-neg.count)/(pos.count+neg.count)
+  #cat("\n Tone of Document:",out)
+  return(out)
+}
+```
+
+Apply the function on text of the 162 tweets.
+```{r tone of document, echo=TRUE, eval=TRUE}
+toneofdocument<-GM
+toneofdocument<-toneofdocument
+for (i in 1:162){
+  toneofdocument$toneofdocument[i]<-sentiment(toneofdocument$tweet[i])
+}
+toneofdocument
+```
+
+```{r write csv, echo=TRUE, eval=TRUE}
+write.csv(toneofdocument,"/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/GM tone of document.csv", row.names = FALSE)
+```
+
+
+Visualize the relationship between tone of the document and daily stock price change.
+```{r visualize the relationship, echo=TRUE, eval=TRUE, fig.height=3,fig.width=5}
+plot<-toneofdocument %>%
+  ggplot(aes(x=toneofdocument,y=Daily.change))+
+  geom_jitter(color="#00CED1")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Tone of Document", y="Daily stock price change", title="Relationship between Tone of Document and Daily Stock Price Change")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(axis.text.x=element_text(hjust=0.5, angle=45,size=4.5))+
+  coord_flip()
+plot
+```
+
+## (b) Positive VS Negative
+
+Ignore all documents that do not have words contained within the Hu & Liu dictionary and all neutral scores. Collapse the positive and negative texts into two larger documents.
+```{r segregate, echo=TRUE, eval=TRUE}
+positivetone<-toneofdocument %>%
+  filter(toneofdocument>0) %>%
+  select(tweet)
+positivetext<-paste(unlist(positivetone$tweet), collapse=" ")
+negativetone<-toneofdocument %>%
+  filter(toneofdocument<0) %>%
+  select(tweet)
+negativetext<-paste(unlist(negativetone$tweet), collapse=" ")
+```
+
+### Comparison Wordcloud
+
+Generate comparison cloud showing the most-frequent positive and negative words, where document 1 denotes positive texts, and document 2 denotes negative texts.
+```{r comparison word cloud, echo=TRUE, eval=TRUE}
+doc_id<-c("Frequent words in positive sentiment tweets","Frequent words in negative sentiment tweets")
+line<-c(1,1)
+comparisontext<-data.frame(doc_id, text=c(positivetext, negativetext),line, stringsAsFactors=FALSE)
+df_source<-DataframeSource(comparisontext)
+df_corpus<-VCorpus(df_source)
+corpuscomparison_clean<-clean_corpus(df_corpus)
+corpuscomparison_tdm<-TermDocumentMatrix(corpuscomparison_clean)
+corpuscomparison_m<-as.matrix(corpuscomparison_tdm)
+set.seed(2105)
+comparison.cloud(corpuscomparison_m, colors=c("orange", "purple"), scale=c(0.1,2), title.size=1, max.words=100)
+```
+
+## (c) Get in their mind
+
+Identify emotions (anger, anticipation, disgust, fear, sadness, sadness, surprise, trust) as well as negative and positive using the NRC Word-Emotion Association Lexicon in the `tidytext` package.
+```{r NRC, echo=TRUE, eval=TRUE}
+nrc_anger<-get_sentiments("nrc") %>% 
+  filter(sentiment=="anger")
+nrc_anticipation<-get_sentiments("nrc") %>% 
+  filter(sentiment=="anticipation")
+nrc_disgust<-get_sentiments("nrc") %>% 
+  filter(sentiment=="disgust")
+nrc_fear<-get_sentiments("nrc") %>% 
+  filter(sentiment=="fear")
+nrc_joy<-get_sentiments("nrc") %>% 
+  filter(sentiment=="joy")
+nrc_sadness<-get_sentiments("nrc") %>% 
+  filter(sentiment=="sadness")
+nrc_surprise<-get_sentiments("nrc") %>% 
+  filter(sentiment=="surprise")
+nrc_trust<-get_sentiments("nrc") %>% 
+  filter(sentiment=="trust")
+nrc_negative<-get_sentiments("nrc") %>% 
+  filter(sentiment=="negative")
+nrc_positive<-get_sentiments("nrc") %>% 
+  filter(sentiment=="positive")
+```
+
+Prepare corpus for identifying emotions.
+
+For tweets that are associated with daily stock price increase/decrease:
+```{r}
+iGM<-GM %>%
+  filter(Daily.change>0)
+dGM<-GM %>%
+  filter(Daily.change<0)
+```
+
+```{r prepare corpus for identifying emotions}
+#Increasing daily stock prices
+doc_id<-c(1:89)
+line<-c(rep(1,89))
+text<-data.frame(doc_id, text=c(iGM$tweet),line, stringsAsFactors=FALSE)
+i_df_source<-DataframeSource(text)
+i_df_nrc<-VCorpus(i_df_source)
+i_nrc_clean<-clean_corpus(i_df_nrc)
+i_nrc_dtm<-DocumentTermMatrix(i_nrc_clean)
+i_nrc_m<-as.matrix(i_nrc_dtm)
+i_nrc_td<-tidy(i_nrc_dtm)
+i_nrc_tf_idf<-i_nrc_td %>%
+  bind_tf_idf(term, document, count)
+i_nrc_tf_idf<-i_nrc_tf_idf %>%
+  arrange(desc(tf_idf))
+i_nrc_tf_idf
+```
+
+```{r prepare corpus 2nd for identifying emotions}
+#Decreasing daily stock prices
+doc_id<-c(1:73)
+line<-c(rep(1,73))
+text<-data.frame(doc_id, text=c(dGM$tweet),line, stringsAsFactors=FALSE)
+d_df_source<-DataframeSource(text)
+d_df_nrc<-VCorpus(d_df_source)
+d_nrc_clean<-clean_corpus(d_df_nrc)
+d_nrc_dtm<-DocumentTermMatrix(d_nrc_clean)
+d_nrc_m<-as.matrix(d_nrc_dtm)
+d_nrc_td<-tidy(d_nrc_dtm)
+d_nrc_tf_idf<-d_nrc_td %>%
+  bind_tf_idf(term, document, count)
+d_nrc_tf_idf<-d_nrc_tf_idf %>%
+  arrange(desc(tf_idf))
+d_nrc_tf_idf
+```
+
+### Angry
+
+Find tf_idf score for angry words used in the tweets.
+```{r anger, echo=TRUE, eval=TRUE}
+ianger<-i_nrc_tf_idf %>%
+  filter(term %in% nrc_anger$word) %>%
+  select(term,tf_idf)
+ianger<-rename(ianger, i_tf_idf=tf_idf)
+danger<-d_nrc_tf_idf %>%
+  filter(term %in% nrc_anger$word) %>%
+  select(term,tf_idf)
+danger<-rename(danger, d_tf_idf=tf_idf)
+angerwords<-full_join(ianger, danger,by="term")
+#Replace all NA values as 0
+angerwords$i_tf_idf[is.na(angerwords$i_tf_idf)]<-0
+angerwords$d_tf_idf[is.na(angerwords$d_tf_idf)]<-0
+angerwords
+```
+
+Visualize the relationship between the use of words from the angry category and stock price change. 
+```{r plot anger, echo=TRUE, eval=TRUE}
+plot2<-angerwords %>%
+  ggplot(aes(x=i_tf_idf,y=d_tf_idf))+
+  geom_jitter(color="#00CED1")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Angry Words and Daily Stock Price Increase/Decrease")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_x_continuous(limits=c(0,3), breaks=seq(0,3,0.5))+
+  scale_y_continuous(limits=c(0,3), breaks=seq(0,3,0.5))#+
+  #facet_zoom(x=i_tf_idf<=0.5, y=d_tf_idf<=0.5)
+plot2
+```
+
+### Anticipation
+
+Find tf_idf score for anticipation words used in the tweets.
+```{r anticipation, echo=TRUE, eval=TRUE}
+ianticipation<-i_nrc_tf_idf %>%
+  filter(term %in% nrc_anticipation$word) %>%
+  select(term,tf_idf)
+ianticipation<-rename(ianticipation, i_tf_idf=tf_idf)
+danticipation<-d_nrc_tf_idf %>%
+  filter(term %in% nrc_anticipation$word) %>%
+  select(term,tf_idf)
+danticipation<-rename(danticipation, d_tf_idf=tf_idf)
+anticipationwords<-full_join(ianticipation, danticipation,by="term")
+#Replace all NA values as 0
+anticipationwords$i_tf_idf[is.na(anticipationwords$i_tf_idf)]<-0
+anticipationwords$d_tf_idf[is.na(anticipationwords$d_tf_idf)]<-0
+anticipationwords
+```
+
+Visualize the relationship between the use of words from the anticipation category and stock price change. 
+```{r plot anticipation, echo=TRUE, eval=TRUE}
+plot3<-anticipationwords %>%
+  ggplot(aes(x=i_tf_idf,y=d_tf_idf))+
+  geom_jitter(color="#00CED1")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Anticipation Words and Daily Stock Price Increase/Decrease")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_x_continuous(limits=c(0,3), breaks=seq(0,3,0.5))+
+  scale_y_continuous(limits=c(0,3), breaks=seq(0,3,0.5))
+plot3
+```
+
+### Disgust
+
+Find tf_idf score for disgust words used in the tweets.
+```{r disgust, echo=TRUE, eval=TRUE}
+idisgust<-i_nrc_tf_idf %>%
+  filter(term %in% nrc_disgust$word) %>%
+  select(term,tf_idf)
+idisgust<-rename(idisgust, i_tf_idf=tf_idf)
+ddisgust<-d_nrc_tf_idf %>%
+  filter(term %in% nrc_disgust$word) %>%
+  select(term,tf_idf)
+ddisgust<-rename(ddisgust, d_tf_idf=tf_idf)
+disgustwords<-full_join(idisgust, ddisgust,by="term")
+#Replace all NA values as 0
+disgustwords$i_tf_idf[is.na(disgustwords$i_tf_idf)]<-0
+disgustwords$d_tf_idf[is.na(disgustwords$d_tf_idf)]<-0
+disgustwords
+```
+
+Visualize the relationship between the use of words from the disgust category and stock price change 
+```{r plot disgust, echo=TRUE, eval=TRUE}
+plot4<-disgustwords %>%
+  ggplot(aes(x=i_tf_idf,y=d_tf_idf))+
+  geom_jitter(color="#00CED1")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Disgust Words and Daily Stock Price Increase/Decrease")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_x_continuous(limits=c(0,2), breaks=seq(0,2,0.5))+
+  scale_y_continuous(limits=c(0,2), breaks=seq(0,2,0.5))
+plot4
+```
+
+### Fear
+
+Find tf_idf score for fear words used in the tweets.
+```{r fear, echo=TRUE, eval=TRUE}
+ifear<-i_nrc_tf_idf %>%
+  filter(term %in% nrc_fear$word) %>%
+  select(term,tf_idf)
+ifear<-rename(ifear, i_tf_idf=tf_idf)
+dfear<-d_nrc_tf_idf %>%
+  filter(term %in% nrc_fear$word) %>%
+  select(term,tf_idf)
+dfear<-rename(dfear, d_tf_idf=tf_idf)
+fearwords<-full_join(ifear, dfear,by="term")
+#Replace all NA values as 0
+fearwords$i_tf_idf[is.na(fearwords$i_tf_idf)]<-0
+fearwords$d_tf_idf[is.na(fearwords$d_tf_idf)]<-0
+fearwords
+```
+
+Visualize the relationship between the use of words from the fear category and stock price change. 
+```{r plot fear, echo=TRUE, eval=TRUE}
+plot5<-fearwords %>%
+  ggplot(aes(x=i_tf_idf,y=d_tf_idf))+
+  geom_jitter(color="#00CED1")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Fear Words and Daily Stock Price Increase/Decrease")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_x_continuous(limits=c(0,2), breaks=seq(0,2,0.5))+
+  scale_y_continuous(limits=c(0,2), breaks=seq(0,2,0.5))
+plot5
+```
+
+### Joy
+
+Find tf_idf score for joy words used in the tweets.
+```{r joy, echo=TRUE, eval=TRUE}
+ijoy<-i_nrc_tf_idf %>%
+  filter(term %in% nrc_joy$word) %>%
+  select(term,tf_idf)
+ijoy<-rename(ijoy, i_tf_idf=tf_idf)
+djoy<-d_nrc_tf_idf %>%
+  filter(term %in% nrc_joy$word) %>%
+  select(term,tf_idf)
+djoy<-rename(djoy, d_tf_idf=tf_idf)
+joywords<-full_join(ijoy, djoy,by="term")
+#Replace all NA values as 0
+joywords$i_tf_idf[is.na(joywords$i_tf_idf)]<-0
+joywords$d_tf_idf[is.na(joywords$d_tf_idf)]<-0
+joywords
+```
+
+Visualize the relationship between the use of words from the joy category and stock price change.
+```{r plot joy, echo=TRUE, eval=TRUE}
+plot6<-joywords %>%
+  ggplot(aes(x=i_tf_idf,y=d_tf_idf))+
+  geom_jitter(color="#00CED1")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Joy Words and Daily Stock Price Increase/Decrease")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_x_continuous(limits=c(0,3), breaks=seq(0,3,0.5))+
+  scale_y_continuous(limits=c(0,3), breaks=seq(0,3,0.5))
+plot6
+```
+
+### Sadness
+
+Find tf_idf score for sadness words used in the tweets.
+```{r sadness, echo=TRUE, eval=TRUE}
+isadness<-i_nrc_tf_idf %>%
+  filter(term %in% nrc_sadness$word) %>%
+  select(term,tf_idf)
+isadness<-rename(isadness, i_tf_idf=tf_idf)
+dsadness<-d_nrc_tf_idf %>%
+  filter(term %in% nrc_sadness$word) %>%
+  select(term,tf_idf)
+dsadness<-rename(dsadness, d_tf_idf=tf_idf)
+sadnesswords<-full_join(isadness, dsadness,by="term")
+#Replace all NA values as 0
+sadnesswords$i_tf_idf[is.na(sadnesswords$i_tf_idf)]<-0
+sadnesswords$d_tf_idf[is.na(sadnesswords$d_tf_idf)]<-0
+sadnesswords
+```
+
+Visualize the relationship between the use of words from the sadness category and stock price change.
+```{r plot sadness, echo=TRUE, eval=TRUE}
+plot7<-sadnesswords %>%
+  ggplot(aes(x=i_tf_idf,y=d_tf_idf))+
+  geom_jitter(color="#00CED1")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Sadness Words and Daily Stock Price Increase/Decrease")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_x_continuous(limits=c(0,2.5), breaks=seq(0,2.5,0.5))+
+  scale_y_continuous(limits=c(0,2.5), breaks=seq(0,2.5,0.5))
+plot7
+```
+### Surprise
+
+Find tf_idf score for surprise words used in the tweets.
+```{r surprise, echo=TRUE, eval=TRUE}
+isurprise<-i_nrc_tf_idf %>%
+  filter(term %in% nrc_surprise$word) %>%
+  select(term,tf_idf)
+isurprise<-rename(isurprise, i_tf_idf=tf_idf)
+dsurprise<-d_nrc_tf_idf %>%
+  filter(term %in% nrc_surprise$word) %>%
+  select(term,tf_idf)
+dsurprise<-rename(dsurprise, d_tf_idf=tf_idf)
+surprisewords<-full_join(isurprise, dsurprise,by="term")
+#Replace all NA values as 0
+surprisewords$i_tf_idf[is.na(surprisewords$i_tf_idf)]<-0
+surprisewords$d_tf_idf[is.na(surprisewords$d_tf_idf)]<-0
+surprisewords
+```
+
+Visualize the relationship between the use of words from the surprise category and stock price change.
+```{r plot surprise, echo=TRUE, eval=TRUE}
+plot8<-surprisewords %>%
+  ggplot(aes(x=i_tf_idf,y=d_tf_idf))+
+  geom_jitter(color="#00CED1")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Surprise Words and Daily Stock Price Increase/Decrease")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_x_continuous(limits=c(0,2), breaks=seq(0,2,0.5))+
+  scale_y_continuous(limits=c(0,2), breaks=seq(0,2,0.5))
+plot8
+```
+
+### Trust
+
+Find tf_idf score for trust words used in the tweets.
+```{r trust, echo=TRUE, eval=TRUE}
+itrust<-i_nrc_tf_idf %>%
+  filter(term %in% nrc_trust$word) %>%
+  select(term,tf_idf)
+itrust<-rename(itrust, i_tf_idf=tf_idf)
+dtrust<-d_nrc_tf_idf %>%
+  filter(term %in% nrc_trust$word) %>%
+  select(term,tf_idf)
+dtrust<-rename(dtrust, d_tf_idf=tf_idf)
+trustwords<-full_join(itrust, dtrust,by="term")
+#Replace all NA values as 0
+trustwords$i_tf_idf[is.na(trustwords$i_tf_idf)]<-0
+trustwords$d_tf_idf[is.na(trustwords$d_tf_idf)]<-0
+trustwords
+```
+
+Visualize the relationship between the use of words from the trust category and stock price change.
+```{r plot trust, echo=TRUE, eval=TRUE}
+plot9<-trustwords %>%
+  ggplot(aes(x=i_tf_idf,y=d_tf_idf))+
+  geom_jitter(color="#00CED1")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Trust Words and Daily Stock Price Increase/Decrease")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_x_continuous(limits=c(0,2), breaks=seq(0,2,0.5))+
+  scale_y_continuous(limits=c(0,2), breaks=seq(0,2,0.5))
+plot9
+```
+
+### Negative
+
+Find tf_idf score for negative words used in the tweets.
+```{r negative, echo=TRUE, eval=TRUE}
+inegative<-i_nrc_tf_idf %>%
+  filter(term %in% nrc_negative$word) %>%
+  select(term,tf_idf)
+inegative<-rename(inegative, i_tf_idf=tf_idf)
+dnegative<-d_nrc_tf_idf %>%
+  filter(term %in% nrc_negative$word) %>%
+  select(term,tf_idf)
+dnegative<-rename(dnegative, d_tf_idf=tf_idf)
+negativewords<-full_join(inegative, dnegative,by="term")
+#Replace all NA values as 0
+negativewords$i_tf_idf[is.na(negativewords$i_tf_idf)]<-0
+negativewords$d_tf_idf[is.na(negativewords$d_tf_idf)]<-0
+negativewords
+```
+
+Visualize the relationship between the use of words from the negative category and stock price change.
+```{r plot negative, echo=TRUE, eval=TRUE}
+plot10<-negativewords %>%
+  ggplot(aes(x=i_tf_idf,y=d_tf_idf))+
+  geom_jitter(color="#00CED1")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Negative Words and Daily Stock Price Increase/Decrease")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_x_continuous(limits=c(0,2), breaks=seq(0,2,0.5))+
+  scale_y_continuous(limits=c(0,2), breaks=seq(0,2,0.5))
+plot10
+```
+
+### Positive
+
+Find tf_idf score for positive words used in the tweets.
+```{r positive, echo=TRUE, eval=TRUE}
+ipositive<-i_nrc_tf_idf %>%
+  filter(term %in% nrc_positive$word) %>%
+  select(term,tf_idf)
+ipositive<-rename(ipositive, i_tf_idf=tf_idf)
+dpositive<-d_nrc_tf_idf %>%
+  filter(term %in% nrc_positive$word) %>%
+  select(term,tf_idf)
+dpositive<-rename(dpositive, d_tf_idf=tf_idf)
+positivewords<-full_join(ipositive, dpositive,by="term")
+#Replace all NA values as 0
+positivewords$i_tf_idf[is.na(positivewords$i_tf_idf)]<-0
+positivewords$d_tf_idf[is.na(positivewords$d_tf_idf)]<-0
+positivewords
+```
+
+Visualize the relationship between the use of words from the positive category and stock price change.
+```{r plot positive, echo=TRUE, eval=TRUE}
+plot11<-positivewords %>%
+  ggplot(aes(x=i_tf_idf,y=d_tf_idf))+
+  geom_jitter(color="#00CED1")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Positive Words and Daily Stock Price Increase/Decrease")+
+  theme(plot.title=element_text(hjust=0.5))+
+  scale_x_continuous(limits=c(0,3), breaks=seq(0,3,0.5))+
+  scale_y_continuous(limits=c(0,3), breaks=seq(0,3,0.5))
+plot11
+```
