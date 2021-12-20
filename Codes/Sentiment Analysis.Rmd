@@ -1,12 +1,8 @@
 ---
-title: "Sentiment Analysis for GM Tweets & Relationship with Daily Stock Price Change"
+title: "Sentiment Analysis for Tesla Tweets & Relationship with Daily Stock Price Change"
 author: "Li Peishan"
 date: "3/30/2021"
 output:
-  html_document:
-    toc: yes
-    df_print: paged
-    theme: journal   
   html_notebook:
     toc: yes
     theme: journal
@@ -85,7 +81,7 @@ library(DT)
 
 Import database:
 ```{r import data, echo=TRUE, eval=TRUE}
-GM<-read.csv("/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/GM_stock_sentiment_analysis.csv")
+Tesla<-read.csv("/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/Tesla/(update)TSLA_sentiment_analysis.csv")
 ```
 
 # Cleaning the text and word cloud
@@ -94,9 +90,9 @@ GM<-read.csv("/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/G
 
 Create and preprocess text in corpus (162 tweets)
 ```{r create a dtm, echo=TRUE, eval=TRUE}
-doc_id<-c(1:162)
-line<-c(rep(1,162))
-text<-data.frame(doc_id, text=GM$tweet,line, stringsAsFactors=FALSE)
+doc_id<-c(1:126)
+line<-c(rep(1,126))
+text<-data.frame(doc_id, text=Tesla$tweet,line, stringsAsFactors=FALSE)
 df_source<-DataframeSource(text)
 df_corpus<-VCorpus(df_source)
 #Clean text
@@ -132,11 +128,11 @@ corpustf_idf<-corpustd %>%
 corpustf_idf
 ```
 
-Word cloud for GM CEO's tweets
+Word cloud for Tesla CEO's tweets
 ```{r word clouds, echo=TRUE, eval=TRUE}
 purple_orange<-brewer.pal(10, "PuOr")
 purple_orange<-purple_orange[-(1:2)]
-set.seed(2100)
+set.seed(2200)
 wordcloud(corpustf_idf$term, corpustf_idf$tf, max.words=100, colors=purple_orange)
 ```
 
@@ -162,23 +158,22 @@ sentiment<-function(words=c("really great good stuff bad")){
 
 Apply the function on text of the 162 tweets.
 ```{r tone of document, echo=TRUE, eval=TRUE}
-toneofdocument<-GM
+toneofdocument<-Tesla
 toneofdocument<-toneofdocument
-for (i in 1:162){
+for (i in 1:126){
   toneofdocument$toneofdocument[i]<-sentiment(toneofdocument$tweet[i])
 }
 toneofdocument
 ```
 
 ```{r write csv, echo=TRUE, eval=TRUE}
-write.csv(toneofdocument,"/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/GM tone of document.csv", row.names = FALSE)
+write.csv(toneofdocument,"/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/Tesla/Tesla tone of document.csv", row.names = FALSE)
 ```
-
 
 Visualize the relationship between tone of the document and daily stock price change.
 ```{r visualize the relationship, echo=TRUE, eval=TRUE, fig.height=3,fig.width=5}
 plot<-toneofdocument %>%
-  ggplot(aes(x=toneofdocument,y=Daily.change))+
+  ggplot(aes(x=toneofdocument,y=DailyChange))+
   geom_jitter(color="#00CED1")+
   theme_bw()+
   theme(legend.position="none")+
@@ -245,21 +240,404 @@ nrc_positive<-get_sentiments("nrc") %>%
   filter(sentiment=="positive")
 ```
 
+```{r}
+nrc_anger$word
+```
+
+```{r}
+angryf<-function(words=c("Check out the frequency of words that represent emotions")){
+  tok<-tokens(words)
+  wordcount<-length(tok[[1]])
+  angercount<-sum(tok[[1]] %in% nrc_anger$word)
+  angerf<-angercount/wordcount
+  return(angerf)
+}
+anticipationf<-function(words=c("Check out the frequency of words that represent emotions")){
+  tok<-tokens(words)
+  wordcount<-length(tok[[1]])
+  anticipationcount<-sum(tok[[1]] %in% nrc_anticipation$word)
+  anticipationf<-anticipationcount/wordcount
+  return(anticipationf)
+}  
+disgustf<-function(words=c("Check out the frequency of words that represent emotions")){
+  tok<-tokens(words)
+  wordcount<-length(tok[[1]])
+  disgustcount<-sum(tok[[1]] %in% nrc_disgust$word)
+  disgustf<-disgustcount/wordcount
+  return(disgustf)
+}
+fearf<-function(words=c("Check out the frequency of words that represent emotions")){
+  tok<-tokens(words)
+  wordcount<-length(tok[[1]])
+  fearcount<-sum(tok[[1]] %in% nrc_fear$word)
+  fearf<-fearcount/wordcount
+  return(fearf)
+}
+joyf<-function(words=c("Check out the frequency of words that represent emotions")){
+  tok<-tokens(words)
+  wordcount<-length(tok[[1]])
+  joycount<-sum(tok[[1]] %in% nrc_joy$word)
+  joyf<-joycount/wordcount
+  return(joyf)
+}
+sadnessf<-function(words=c("Check out the frequency of words that represent emotions")){
+  tok<-tokens(words)
+  wordcount<-length(tok[[1]])
+  sadnesscount<-sum(tok[[1]] %in% nrc_surprise$word)
+  sadnessf<-sadnesscount/wordcount
+  return(sadnessf)
+}
+surprisef<-function(words=c("Check out the frequency of words that represent emotions")){
+  tok<-tokens(words)
+  wordcount<-length(tok[[1]])
+  surprisecount<-sum(tok[[1]] %in% nrc_sadness$word)
+  surprisef<-surprisecount/wordcount
+  return(surprisef)
+}
+trustf<-function(words=c("Check out the frequency of words that represent emotions")){
+  tok<-tokens(words)
+  wordcount<-length(tok[[1]])
+  trustcount<-sum(tok[[1]] %in% nrc_trust$word)
+  trustf<-trustcount/wordcount
+  return(trustf)
+}
+negativef<-function(words=c("Check out the frequency of words that represent emotions")){
+  tok<-tokens(words)
+  wordcount<-length(tok[[1]])
+  negativecount<-sum(tok[[1]] %in% nrc_negative$word)
+  negativef<-negativecount/wordcount
+  return(negativef)
+}
+positivef<-function(words=c("Check out the frequency of words that represent emotions")){
+  tok<-tokens(words)
+  wordcount<-length(tok[[1]])
+  positivecount<-sum(tok[[1]] %in% nrc_positive$word)
+  positivef<-positivecount/wordcount
+  return(positivef)
+}
+```
+
+```{r}
+emotionsfrequency<-Tesla
+for (i in 1:126){
+  emotionsfrequency$angryf[i]<-angryf(emotionsfrequency$tweet[i])
+  emotionsfrequency$anticipationf[i]<-anticipationf(emotionsfrequency$tweet[i])
+  emotionsfrequency$disgustf[i]<-disgustf(emotionsfrequency$tweet[i])
+  emotionsfrequency$fearf[i]<-fearf(emotionsfrequency$tweet[i])
+  emotionsfrequency$joyf[i]<-joyf(emotionsfrequency$tweet[i])
+  emotionsfrequency$sadnessf[i]<-sadnessf(emotionsfrequency$tweet[i])
+  emotionsfrequency$surprisef[i]<-surprisef(emotionsfrequency$tweet[i])
+  emotionsfrequency$trustf[i]<-trustf(emotionsfrequency$tweet[i])
+  emotionsfrequency$negativef[i]<-negativef(emotionsfrequency$tweet[i])
+  emotionsfrequency$positivef[i]<-positivef(emotionsfrequency$tweet[i])
+  
+  emotionsfrequency$langryf[i]<-log(emotionsfrequency$angryf[i]+1)
+  emotionsfrequency$lanticipationf[i]<-log(emotionsfrequency$anticipationf[i]+1)
+  emotionsfrequency$ldisgustf[i]<-log(emotionsfrequency$disgustf[i]+1)
+  emotionsfrequency$lfearf[i]<-log(emotionsfrequency$fearf[i]+1)
+  emotionsfrequency$ljoyf[i]<-log(emotionsfrequency$joyf[i]+1)
+  emotionsfrequency$lsadnessf[i]<-log(emotionsfrequency$sadnessf[i]+1)
+  emotionsfrequency$lsurprisef[i]<-log(emotionsfrequency$surprisef[i]+1)
+  emotionsfrequency$ltrustf[i]<-log(emotionsfrequency$trustf[i]+1)
+  emotionsfrequency$lnegativef[i]<-log(emotionsfrequency$negativef[i]+1)
+  emotionsfrequency$lpositivef[i]<-log(emotionsfrequency$positivef[i]+1)
+}
+emotionsfrequency
+```
+
+```{r write csv emotions, echo=TRUE, eval=TRUE}
+write.csv(emotionsfrequency,"/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/Tesla/Tesla frequency of emotions.csv", row.names = FALSE)
+```
+
+```{r visualize the emotion relationship, echo=TRUE, eval=TRUE}
+plotangry<-emotionsfrequency %>%
+  ggplot(aes(x=langryf,y=DailyChange))+
+  geom_jitter(color="#00CED1")+
+  geom_smooth(method="lm", se=FALSE, color="red")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency of angry words in the text (Log)", y="Daily stock price change", title="Relationship between Angry emotions and Daily Stock Price Change")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(axis.text.x=element_text(hjust=0.5))
+plotangry
+#ggsave('Angry-linear.png')
+```
+
+```{r}
+plotanticipation<-emotionsfrequency %>%
+  ggplot(aes(x=lanticipationf,y=DailyChange))+
+  geom_jitter(color="#00CED1")+
+  geom_smooth(method="lm", se=FALSE, color="red")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency of anticipation words in the text (Log)", y="Daily stock price change", title="Relationship between Anticipation emotions and Daily Stock Price Change")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(axis.text.x=element_text(hjust=0.5))
+plotanticipation
+#ggsave('Anticipation-linear.png')
+```
+
+```{r}
+plotdisgust<-emotionsfrequency %>%
+  ggplot(aes(x=ldisgustf,y=DailyChange))+
+  geom_jitter(color="#00CED1")+
+  geom_smooth(method="lm", se=FALSE, color="red")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency of disgust words in the text (Log)", y="Daily stock price change", title="Relationship between Disgust emotions and Daily Stock Price Change")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(axis.text.x=element_text(hjust=0.5))
+plotdisgust
+#ggsave('Disgust-linear.png')
+```
+
+```{r}
+plotjoy<-emotionsfrequency %>%
+  ggplot(aes(x=ljoyf,y=DailyChange))+
+  geom_jitter(color="#00CED1")+
+  geom_smooth(method="lm", se=FALSE, color="red")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency of joy words in the text (Log)", y="Daily stock price change", title="Relationship between Joy emotions and Daily Stock Price Change")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(axis.text.x=element_text(hjust=0.5))
+plotjoy
+#ggsave('Joy-linear.png')
+```
+
+```{r}
+plotfear<-emotionsfrequency %>%
+  ggplot(aes(x=lfearf,y=DailyChange))+
+  geom_jitter(color="#00CED1")+
+  geom_smooth(method="lm", se=FALSE, color="red")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency of fear words in the text (Log)", y="Daily stock price change", title="Relationship between Fear emotions and Daily Stock Price Change")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(axis.text.x=element_text(hjust=0.5))
+plotfear
+#ggsave('Fear-linear.png')
+```
+
+```{r}
+plotsadness<-emotionsfrequency %>%
+  ggplot(aes(x=lsadnessf,y=DailyChange))+
+  geom_jitter(color="#00CED1")+
+  geom_smooth(method="lm", se=FALSE, color="red")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency of sadness words in the text (Log)", y="Daily stock price change", title="Relationship between Sadness emotions and Daily Stock Price Change")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(axis.text.x=element_text(hjust=0.5))
+plotsadness
+#ggsave('Sadness-linear.png')
+```
+
+```{r}
+plotsurprise<-emotionsfrequency %>%
+  ggplot(aes(x=lsurprisef,y=DailyChange))+
+  geom_jitter(color="#00CED1")+
+  geom_smooth(method="lm", se=FALSE, color="red")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency of sadness words in the text (Log)", y="Daily stock price change", title="Relationship between Surprise emotions and Daily Stock Price Change")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(axis.text.x=element_text(hjust=0.5))
+plotsurprise
+#ggsave('Surprise-linear.png')
+```
+
+```{r}
+plottrust<-emotionsfrequency %>%
+  ggplot(aes(x=ltrustf,y=DailyChange))+
+  geom_jitter(color="#00CED1")+
+  geom_smooth(method="lm", se=FALSE, color="red")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency of trust words in the text (Log)", y="Daily stock price change", title="Relationship between Trust emotions and Daily Stock Price Change")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(axis.text.x=element_text(hjust=0.5))
+plottrust
+#ggsave('Trust-linear.png')
+```
+
+```{r}
+plotnegative<-emotionsfrequency %>%
+  ggplot(aes(x=lnegativef,y=DailyChange))+
+  geom_jitter(color="#00CED1")+
+  geom_smooth(method="lm", se=FALSE, color="red")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency of negative words in the text (Log)", y="Daily stock price change", title="Relationship between Negative emotions and Daily Stock Price Change")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(axis.text.x=element_text(hjust=0.5))
+plotnegative
+#ggsave('Negative-linear.png')
+```
+
+```{r}
+plotpositive<-emotionsfrequency %>%
+  ggplot(aes(x=lpositivef,y=DailyChange))+
+  geom_jitter(color="#00CED1")+
+  geom_smooth(method="lm", se=FALSE, color="red")+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(x="Frequency of positive words in the text (Log)", y="Daily stock price change", title="Relationship between Positive emotions and Daily Stock Price Change")+
+  theme(plot.title=element_text(hjust=0.5))+
+  theme(axis.text.x=element_text(hjust=0.5))
+plotpositive
+#ggsave('Positive-linear.png')
+```
+
+Linear regression
+```{r}
+emotionsfrequency$DailyChange<-as.numeric(emotionsfrequency$DailyChange)
+lm<-lm(DailyChange ~ angryf+anticipationf+disgustf+fearf+joyf+sadnessf+surprisef+trustf+negativef+positivef, data=emotionsfrequency)
+summary(lm)
+```
+
+```{r}
+llm<-lm(DailyChange ~ langryf+lanticipationf+ldisgustf+lfearf+ljoyf+lsadnessf+lsurprisef+ltrustf+lnegativef+lpositivef, data=emotionsfrequency)
+summary(llm)
+```
+
+```{r}
+emotionsfrequency$DailyChange<-as.numeric(emotionsfrequency$DailyChange)
+lmangry<-lm(DailyChange ~ angryf, data=emotionsfrequency)
+summary(lmangry)
+```
+
+```{r}
+emotionsfrequency$DailyChange<-as.numeric(emotionsfrequency$DailyChange)
+llmangry<-lm(DailyChange ~ langryf, data=emotionsfrequency)
+summary(llmangry)
+```
+
+```{r}
+lmanticipation<-lm(DailyChange ~ anticipationf, data=emotionsfrequency)
+summary(lmanticipation)
+```
+
+```{r}
+llmanticipation<-lm(DailyChange ~ lanticipationf, data=emotionsfrequency)
+summary(llmanticipation)
+```
+
+```{r}
+lmdisgust<-lm(DailyChange ~ disgustf, data=emotionsfrequency)
+summary(lmdisgust)
+```
+
+```{r}
+llmdisgust<-lm(DailyChange ~ ldisgustf, data=emotionsfrequency)
+summary(llmdisgust)
+```
+
+```{r}
+lmfear<-lm(DailyChange ~ fearf, data=emotionsfrequency)
+summary(lmfear)
+```
+
+```{r}
+llmfear<-lm(DailyChange ~ lfearf, data=emotionsfrequency)
+summary(llmfear)
+```
+
+```{r}
+lmjoy<-lm(DailyChange ~ joyf, data=emotionsfrequency)
+summary(lmjoy)
+```
+
+```{r}
+llmjoy<-lm(DailyChange ~ ljoyf, data=emotionsfrequency)
+summary(llmjoy)
+```
+
+```{r}
+lmsadness<-lm(DailyChange ~ sadnessf, data=emotionsfrequency)
+summary(lmsadness)
+```
+
+```{r}
+llmsadness<-lm(DailyChange ~ lsadnessf, data=emotionsfrequency)
+summary(llmsadness)
+```
+
+```{r}
+lmsurprise<-lm(DailyChange ~ surprisef, data=emotionsfrequency)
+summary(lmsurprise)
+```
+
+```{r}
+llmsurprise<-lm(DailyChange ~ lsurprisef, data=emotionsfrequency)
+summary(llmsurprise)
+```
+
+```{r}
+lmtrust<-lm(DailyChange ~ trustf, data=emotionsfrequency)
+summary(lmtrust)
+```
+
+```{r}
+llmtrust<-lm(DailyChange ~ ltrustf, data=emotionsfrequency)
+summary(llmtrust)
+```
+
+```{r}
+lmnegative<-lm(DailyChange ~ negativef, data=emotionsfrequency)
+summary(lmnegative)
+```
+
+```{r}
+llmnegative<-lm(DailyChange ~ lnegativef, data=emotionsfrequency)
+summary(llmnegative)
+```
+
+```{r}
+lmpositive<-lm(DailyChange ~ positivef, data=emotionsfrequency)
+summary(lmpositive)
+```
+
+```{r}
+llmpositive<-lm(DailyChange ~ lpositivef, data=emotionsfrequency)
+summary(llmpositive)
+```
+
+```{r}
+library(stargazer)
+stargazer(llm, type="text", title="Emotion Analysis: Multilinear Regression Result", out="/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/Tesla/Emotion Analysis: Multilinear Regression Result (Log).txt")
+stargazer(llm, type="text", title="Emotion Analysis: Multilinear Regression Result", out="/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/Tesla/Emotion Analysis: Multilinear Regression Result (Log).pdf")
+```
+
+```{r}
+library(stargazer)
+stargazer(lm, type="text", title="Emotion Analysis: Multilinear Regression Result", digits=1, out="/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/Tesla/Emotion Analysis:Multilinear Regression Result.txt")
+```
+
+```{r}
+stargazer(llmangry, llmanticipation, llmdisgust, llmfear, llmjoy, llmsadness, llmsurprise, llmtrust, llmpositive, llmnegative,  type="text", title="Emotion Analysis:Linear Regression Result", out="/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/Tesla/Emotion Analysis: Linear Regression Result (Log).txt")
+```
+
+```{r}
+stargazer(lmangry, lmanticipation, lmdisgust, lmfear, lmjoy, lmsadness, lmsurprise, lmtrust, lmpositive, lmnegative,  type="text", title="Emotion Analysis:Linear Regression Result", out="/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/Tesla/Emotion Analysis: Linear Regression Result.txt")
+```
+
+
 Prepare corpus for identifying emotions.
 
 For tweets that are associated with daily stock price increase/decrease:
 ```{r}
-iGM<-GM %>%
-  filter(Daily.change>0)
-dGM<-GM %>%
-  filter(Daily.change<0)
+iTesla<-Tesla %>%
+  filter(DailyChange>0)
+dTesla<-Tesla %>%
+  filter(DailyChange<0)
 ```
 
 ```{r prepare corpus for identifying emotions}
 #Increasing daily stock prices
-doc_id<-c(1:89)
-line<-c(rep(1,89))
-text<-data.frame(doc_id, text=c(iGM$tweet),line, stringsAsFactors=FALSE)
+doc_id<-c(1:80)
+line<-c(rep(1,80))
+text<-data.frame(doc_id, text=c(iTesla$tweet),line, stringsAsFactors=FALSE)
 i_df_source<-DataframeSource(text)
 i_df_nrc<-VCorpus(i_df_source)
 i_nrc_clean<-clean_corpus(i_df_nrc)
@@ -275,9 +653,9 @@ i_nrc_tf_idf
 
 ```{r prepare corpus 2nd for identifying emotions}
 #Decreasing daily stock prices
-doc_id<-c(1:73)
-line<-c(rep(1,73))
-text<-data.frame(doc_id, text=c(dGM$tweet),line, stringsAsFactors=FALSE)
+doc_id<-c(1:46)
+line<-c(rep(1,46))
+text<-data.frame(doc_id, text=c(dTesla$tweet),line, stringsAsFactors=FALSE)
 d_df_source<-DataframeSource(text)
 d_df_nrc<-VCorpus(d_df_source)
 d_nrc_clean<-clean_corpus(d_df_nrc)
@@ -317,12 +695,13 @@ plot2<-angerwords %>%
   geom_jitter(color="#00CED1")+
   theme_bw()+
   theme(legend.position="none")+
-  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Angry Words and Daily Stock Price Increase/Decrease")+
+  labs(x="f(angry words) in tweets associated with stock price increase", y="f(angry words) in tweets associated with stock price decrease", title="Frequency of angry words in tweets associated with stock price increase/decrease")+
   theme(plot.title=element_text(hjust=0.5))+
   scale_x_continuous(limits=c(0,3), breaks=seq(0,3,0.5))+
   scale_y_continuous(limits=c(0,3), breaks=seq(0,3,0.5))#+
   #facet_zoom(x=i_tf_idf<=0.5, y=d_tf_idf<=0.5)
 plot2
+#ggsave('angry diff.png')
 ```
 
 ### Anticipation
@@ -351,11 +730,12 @@ plot3<-anticipationwords %>%
   geom_jitter(color="#00CED1")+
   theme_bw()+
   theme(legend.position="none")+
-  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Anticipation Words and Daily Stock Price Increase/Decrease")+
+  labs(x="f(anticipation words) in tweets associated with stock price increase", y="f(anticipation words) in tweets associated with stock price decrease", title="Frequency of anticipation words in tweets associated with stock price increase/decrease")+
   theme(plot.title=element_text(hjust=0.5))+
   scale_x_continuous(limits=c(0,3), breaks=seq(0,3,0.5))+
   scale_y_continuous(limits=c(0,3), breaks=seq(0,3,0.5))
 plot3
+#ggsave('anticipation diff.png')
 ```
 
 ### Disgust
@@ -384,11 +764,12 @@ plot4<-disgustwords %>%
   geom_jitter(color="#00CED1")+
   theme_bw()+
   theme(legend.position="none")+
-  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Disgust Words and Daily Stock Price Increase/Decrease")+
+  labs(x="f(disgust words) in tweets associated with stock price increase", y="f(disgust words) in tweets associated with stock price decrease", title="Frequency of disgust words in tweets associated with stock price increase/decrease")+
   theme(plot.title=element_text(hjust=0.5))+
   scale_x_continuous(limits=c(0,2), breaks=seq(0,2,0.5))+
   scale_y_continuous(limits=c(0,2), breaks=seq(0,2,0.5))
 plot4
+#ggsave('disgust diff.png')
 ```
 
 ### Fear
@@ -417,11 +798,12 @@ plot5<-fearwords %>%
   geom_jitter(color="#00CED1")+
   theme_bw()+
   theme(legend.position="none")+
-  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Fear Words and Daily Stock Price Increase/Decrease")+
+  labs(x="f(fear words) in tweets associated with stock price increase", y="f(fear words) in tweets associated with stock price decrease", title="Frequency of fear words in tweets associated with stock price increase/decrease")+
   theme(plot.title=element_text(hjust=0.5))+
   scale_x_continuous(limits=c(0,2), breaks=seq(0,2,0.5))+
   scale_y_continuous(limits=c(0,2), breaks=seq(0,2,0.5))
 plot5
+#ggsave('fear diff.png')
 ```
 
 ### Joy
@@ -450,11 +832,12 @@ plot6<-joywords %>%
   geom_jitter(color="#00CED1")+
   theme_bw()+
   theme(legend.position="none")+
-  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Joy Words and Daily Stock Price Increase/Decrease")+
+  labs(x="f(joy words) in tweets associated with stock price increase", y="f(joy words) in tweets associated with stock price decrease", title="Frequency of joy words in tweets associated with stock price increase/decrease")+
   theme(plot.title=element_text(hjust=0.5))+
   scale_x_continuous(limits=c(0,3), breaks=seq(0,3,0.5))+
   scale_y_continuous(limits=c(0,3), breaks=seq(0,3,0.5))
 plot6
+#ggsave('joy diff.png')
 ```
 
 ### Sadness
@@ -483,11 +866,12 @@ plot7<-sadnesswords %>%
   geom_jitter(color="#00CED1")+
   theme_bw()+
   theme(legend.position="none")+
-  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Sadness Words and Daily Stock Price Increase/Decrease")+
+  labs(x="f(sadness words) in tweets associated with stock price increase", y="f(sadness words) in tweets associated with stock price decrease", title="Frequency of sadness words in tweets associated with stock price increase/decrease")+
   theme(plot.title=element_text(hjust=0.5))+
   scale_x_continuous(limits=c(0,2.5), breaks=seq(0,2.5,0.5))+
   scale_y_continuous(limits=c(0,2.5), breaks=seq(0,2.5,0.5))
 plot7
+#ggsave('sadness diff.png')
 ```
 ### Surprise
 
@@ -515,11 +899,12 @@ plot8<-surprisewords %>%
   geom_jitter(color="#00CED1")+
   theme_bw()+
   theme(legend.position="none")+
-  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Surprise Words and Daily Stock Price Increase/Decrease")+
+  labs(x="f(surprise words) in tweets associated with stock price increase", y="f(surprise words) in tweets associated with stock price decrease", title="Frequency of surprise words in tweets associated with stock price increase/decrease")+
   theme(plot.title=element_text(hjust=0.5))+
   scale_x_continuous(limits=c(0,2), breaks=seq(0,2,0.5))+
   scale_y_continuous(limits=c(0,2), breaks=seq(0,2,0.5))
 plot8
+#ggsave('surprise diff.png')
 ```
 
 ### Trust
@@ -548,11 +933,12 @@ plot9<-trustwords %>%
   geom_jitter(color="#00CED1")+
   theme_bw()+
   theme(legend.position="none")+
-  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Trust Words and Daily Stock Price Increase/Decrease")+
+  labs(x="f(trust words) in tweets associated with stock price increase", y="f(trust words) in tweets associated with stock price decrease", title="Frequency of trust words in tweets associated with stock price increase/decrease")+
   theme(plot.title=element_text(hjust=0.5))+
   scale_x_continuous(limits=c(0,2), breaks=seq(0,2,0.5))+
   scale_y_continuous(limits=c(0,2), breaks=seq(0,2,0.5))
 plot9
+#ggsave('trust diff.png')
 ```
 
 ### Negative
@@ -581,11 +967,12 @@ plot10<-negativewords %>%
   geom_jitter(color="#00CED1")+
   theme_bw()+
   theme(legend.position="none")+
-  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Negative Words and Daily Stock Price Increase/Decrease")+
+  labs(x="f(negative words) in tweets associated with stock price increase", y="f(negative words) in tweets associated with stock price decrease", title="Frequency of negative words in tweets associated with stock price increase/decrease")+
   theme(plot.title=element_text(hjust=0.5))+
   scale_x_continuous(limits=c(0,2), breaks=seq(0,2,0.5))+
   scale_y_continuous(limits=c(0,2), breaks=seq(0,2,0.5))
 plot10
+#ggsave('negative diff.png')
 ```
 
 ### Positive
@@ -614,9 +1001,156 @@ plot11<-positivewords %>%
   geom_jitter(color="#00CED1")+
   theme_bw()+
   theme(legend.position="none")+
-  labs(x="Frequency in tweets with stock price increase the same day", y="Frequency in tweets with stock price decrease the same day", title="Relationship between Using Positive Words and Daily Stock Price Increase/Decrease")+
+  labs(x="f(positive words) in tweets associated with stock price increase", y="f(positive words) in tweets associated with stock price decrease", title="Frequency of positive words in tweets associated with stock price increase/decrease")+
   theme(plot.title=element_text(hjust=0.5))+
   scale_x_continuous(limits=c(0,3), breaks=seq(0,3,0.5))+
   scale_y_continuous(limits=c(0,3), breaks=seq(0,3,0.5))
 plot11
+#ggsave('positive diff.png')
+```
+
+Logistic Regression
+
+```{r}
+emotionsfrequency$Direction[emotionsfrequency$DailyChange>0]<-1
+emotionsfrequency$Direction[emotionsfrequency$DailyChange==0]<-0
+emotionsfrequency$Direction[emotionsfrequency$DailyChange<0]<--1
+emotionsfrequency$Direction<-as.factor(emotionsfrequency$Direction)
+emotionsfrequency
+```
+
+```{r}
+logit<-glm(Direction ~ angryf+anticipationf+disgustf+fearf+joyf+sadnessf+surprisef+trustf+negativef+positivef, emotionsfrequency, family=binomial(link ="logit"))
+summary(logit)
+```
+
+```{r}
+stargazer(logit, type="text", title="Emotion Analysis: Multi-logistic Regression Result", out="/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/Tesla/Emotion Analysis: Multi-logistic Regression Result.txt")
+```
+
+```{r}
+llogit<-glm(Direction ~ langryf+lanticipationf+ldisgustf+lfearf+ljoyf+lsadnessf+lsurprisef+ltrustf+lpositivef+lnegativef, emotionsfrequency, family=binomial(link ="logit"))
+summary(llogit)
+```
+
+```{r}
+stargazer(llogit, type="text", title="Emotion Analysis: Multi-logistic Regression Result", out="/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/Tesla/Emotion Analysis: Multi-logistic Regression Result (Log).txt")
+```
+
+```{r}
+logitangry<-glm(Direction ~ angryf, emotionsfrequency, family=binomial(link ="logit"))
+summary(logitangry)
+```
+
+```{r}
+llogitangry<-glm(Direction ~ langryf, emotionsfrequency, family=binomial(link ="logit"))
+summary(llogitangry)
+```
+
+```{r}
+logitanticipation<-glm(Direction ~ anticipationf, emotionsfrequency, family=binomial(link ="logit"))
+summary(logitanticipation)
+```
+
+```{r}
+llogitanticipation<-glm(Direction ~ lanticipationf, emotionsfrequency, family=binomial(link ="logit"))
+summary(llogitanticipation)
+```
+
+```{r}
+logitdisgust<-glm(Direction ~ disgustf, emotionsfrequency, family=binomial(link ="logit"))
+summary(logitdisgust)
+```
+
+```{r}
+llogitdisgust<-glm(Direction ~ ldisgustf, emotionsfrequency, family=binomial(link ="logit"))
+summary(llogitdisgust)
+```
+
+```{r}
+logitfear<-glm(Direction ~ fearf, emotionsfrequency, family=binomial(link ="logit"))
+summary(logitfear)
+```
+
+```{r}
+llogitfear<-glm(Direction ~ lfearf, emotionsfrequency, family=binomial(link ="logit"))
+summary(llogitfear)
+```
+
+```{r}
+logitjoy<-glm(Direction ~ joyf, emotionsfrequency, family=binomial(link ="logit"))
+summary(logitjoy)
+```
+
+```{r}
+llogitjoy<-glm(Direction ~ ljoyf, emotionsfrequency, family=binomial(link ="logit"))
+summary(llogitjoy)
+```
+
+```{r}
+logitsadness<-glm(Direction ~ sadnessf, emotionsfrequency, family=binomial(link ="logit"))
+summary(logitsadness)
+```
+
+```{r}
+llogitsadness<-glm(Direction ~ lsadnessf, emotionsfrequency, family=binomial(link ="logit"))
+summary(llogitsadness)
+```
+
+```{r}
+logitsurprise<-glm(Direction ~ surprisef, emotionsfrequency, family=binomial(link ="logit"))
+summary(logitsurprise)
+```
+
+```{r}
+llogitsurprise<-glm(Direction ~ lsurprisef, emotionsfrequency, family=binomial(link ="logit"))
+summary(llogitsurprise)
+```
+
+```{r}
+logitsurprise<-glm(Direction ~ surprisef, emotionsfrequency, family=binomial(link ="logit"))
+summary(logitsurprise)
+```
+
+```{r}
+llogitsurprise<-glm(Direction ~ lsurprisef, emotionsfrequency, family=binomial(link ="logit"))
+summary(llogitsurprise)
+```
+
+```{r}
+logittrust<-glm(Direction ~ trustf, emotionsfrequency, family=binomial(link ="logit"))
+summary(logittrust)
+```
+
+```{r}
+llogittrust<-glm(Direction ~ ltrustf, emotionsfrequency, family=binomial(link ="logit"))
+summary(llogittrust)
+```
+
+```{r}
+logitnegative<-glm(Direction ~ negativef, emotionsfrequency, family=binomial(link ="logit"))
+summary(logitnegative)
+```
+
+```{r}
+llogitnegative<-glm(Direction ~ lnegativef, emotionsfrequency, family=binomial(link ="logit"))
+summary(llogitnegative)
+```
+
+```{r}
+logitpositive<-glm(Direction ~ positivef, emotionsfrequency, family=binomial(link ="logit"))
+summary(logitpositive)
+```
+
+```{r}
+llogitpositive<-glm(Direction ~ lpositivef, emotionsfrequency, family=binomial(link ="logit"))
+summary(llogitpositive)
+```
+
+```{r}
+stargazer(logitangry, logitanticipation, logitdisgust, logitfear, logitjoy, logitsadness, logitsurprise, logittrust, logitpositive, logitnegative,  type="text", title="Emotion Analysis: Logistic Regression Result", out="/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/Tesla/Emotion Analysis: Logistic Regression Result.txt")
+```
+
+```{r}
+stargazer(llogitangry, llogitanticipation, llogitdisgust, llogitfear, llogitjoy, llogitsadness, llogitsurprise, llogittrust, llogitpositive, llogitnegative,  type="text", title="Emotion Analysis: Logistic Regression Result", out="/Users/annie/Desktop/Columbia Fall2021/Columbia Course Fall 2021/GR5067 NLP/Group Project/Tesla/Emotion Analysis: Logistic Regression Result (Log).txt")
 ```
